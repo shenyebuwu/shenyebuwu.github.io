@@ -1,0 +1,5 @@
+
+User-agent: *
+Allow: /
+
+Sitemap: https://shenyebuwu.github.io/sitemap-index.xml

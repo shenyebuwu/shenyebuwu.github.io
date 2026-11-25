@@ -1,0 +1,199 @@
+<!DOCTYPE html><html dir="ltr" lang="zh" class="overflow-y-scroll scroll-smooth"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="canonical" href="https://shenyebuwu.github.io/posts/mcu-startup/"><meta name="generator" content="Astro v7.0.3"><link rel="preload" href="/fonts/roboto-variable.ttf" as="font" type="font/ttf" crossorigin><!-- Primary meta --><title>MCU 启动流程 | shenyebuwu</title><meta name="title" content="MCU 启动流程 | shenyebuwu"><meta name="description" content="从上电复位、向量表和启动代码，到 C/C++ 运行时初始化、main 函数与 RTOS 调度，梳理 MCU 的完整启动过程。"><meta name="author" content="shenyebuwu"><link rel="sitemap" href="/sitemap-index.xml"><!-- Open Graph --><meta property="og:type" content="website"><meta property="og:site_name" content="shenyebuwu"><meta property="og:title" content="MCU 启动流程 | shenyebuwu"><meta property="og:description" content="从上电复位、向量表和启动代码，到 C/C++ 运行时初始化、main 函数与 RTOS 调度，梳理 MCU 的完整启动过程。"><meta property="og:url" content="https://shenyebuwu.github.io/posts/mcu-startup/"><meta property="og:image" content="https://shenyebuwu.github.io/blog-cover.svg"><!-- Twitter / X --><meta property="twitter:card" content="summary_large_image"><meta property="twitter:url" content="https://shenyebuwu.github.io/posts/mcu-startup/"><meta property="twitter:title" content="MCU 启动流程 | shenyebuwu"><meta property="twitter:description" content="从上电复位、向量表和启动代码，到 C/C++ 运行时初始化、main 函数与 RTOS 调度，梳理 MCU 的完整启动过程。"><meta property="twitter:image" content="https://shenyebuwu.github.io/blog-cover.svg"><!-- RSS autodiscovery --><link rel="alternate" type="application/rss+xml" title="shenyebuwu" href="https://shenyebuwu.github.io/rss.xml/"><!-- Filled at runtime by theme.ts to match the current background colour --><meta name="theme-color" content=""><!-- Extra head content injected by child layouts (e.g. JSON-LD, article meta) --><meta property="og:type" content="article"><meta property="article:published_time" content="2026-11-24T16:00:00.000Z"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"MCU 启动流程 | shenyebuwu","datePublished":"2026-11-24T16:00:00.000Z","author":[{"@type":"Person","name":"shenyebuwu","url":"https://github.com/shenyebuwu"}]}</script><!--
+      Inline FOUC-prevention script: sets data-theme on <html> before
+      the browser paints. Runs synchronously, no defer/async.
+    --><script>
+      (function () {
+        const stored = localStorage.getItem("theme");
+        const theme = stored === "dark" ? "dark" : "light";
+        const root = document.firstElementChild;
+        root?.setAttribute("data-theme", theme);
+        root?.classList.toggle("dark", theme === "dark");
+        // Expose value so theme.ts can skip re-detection.
+        window.__theme = { value: theme };
+      })();
+    </script><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.2i1RQzKf.js"></script><link rel="stylesheet" href="/_astro/Footer.Dsyn0eft.css"></head><body class="bg-background font-app text-foreground selection:bg-[var(--accent-soft)] selection:text-foreground flex min-h-svh flex-col"><a id="skip-to-content" class="skip-link" href="#main-content">跳至正文</a><header class="site-header"><div class="header-inner"><a class="site-brand" aria-label="shenyebuwu首页" title="shenyebuwu" href="/"><span class="site-logo-text">SW</span></a><nav aria-label="主导航" class="site-nav"><a href="/archives/" class="nav-link">Blog</a><a href="/about/" class="nav-link">About</a><a class="search-toggle" href="/search/" aria-label="搜索文章" title="搜索"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="icon icon-tabler icons-tabler-outline icon-tabler-search" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" /><path d="M3 10a7 7 0 1 0 14 0 7 7 0 1 0-14 0M21 21l-6-6" /></svg></a><button id="theme-btn" class="theme-toggle" aria-label="切换深色模式" title="切换深浅色"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="dark:hidden" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" /><path d="M12 3h.393a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 2.992z" /></svg><svg width="24" height="24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="hidden dark:block" viewBox="0 0 24 24"><path stroke="none" d="M0 0h24v24H0z" /><path d="M14.828 14.828a4 4 0 1 0-5.656-5.656 4 4 0 0 0 5.656 5.656M6.343 17.657l-1.414 1.414M6.343 6.343 4.929 4.929M17.657 6.343l1.414-1.414M17.657 17.657l1.414 1.414M4 12H2M12 4V2M20 12h2M12 20v2" /></svg></button></nav></div></header><script type="module">function e(){document.getElementById(`skip-to-content`)?.addEventListener(`click`,e=>{if(e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0)return;let t=document.getElementById(`main-content`);t&&(e.preventDefault(),t.setAttribute(`tabindex`,`-1`),t.focus(),t.scrollIntoView(),t.addEventListener(`blur`,()=>t.removeAttribute(`tabindex`),{once:!0}))})}e(),document.addEventListener(`astro:after-swap`,e);</script><main id="main-content" class="site-container article-grid has-toc"><aside class="toc-sidebar" aria-label="On this page"><nav class="toc-sticky"><h2>On this page</h2><ul><li><a data-toc-link href="#从上电到应用程序">从上电到应用程序</a></li><li><a data-toc-link href="#第一阶段硬件复位与引导">第一阶段：硬件复位与引导</a></li><li class="toc-nested"><a data-toc-link href="#1-上电复位">1. 上电复位</a></li><li class="toc-nested"><a data-toc-link href="#2-读取向量表">2. 读取向量表</a></li><li class="toc-nested"><a data-toc-link href="#3-执行-reset_handler">3. 执行 Reset_Handler</a></li><li class="toc-nested"><a data-toc-link href="#4-bootloader-如何移交应用">4. Bootloader 如何移交应用</a></li><li><a data-toc-link href="#第二阶段准备-cc-执行环境">第二阶段：准备 C/C++ 执行环境</a></li><li class="toc-nested"><a data-toc-link href="#1-系统级初始化">1. 系统级初始化</a></li><li class="toc-nested"><a data-toc-link href="#2-复制-data-段">2. 复制 .data 段</a></li><li class="toc-nested"><a data-toc-link href="#3-清零-bss-段">3. 清零 .bss 段</a></li><li class="toc-nested"><a data-toc-link href="#4-初始化运行时并进入-main">4. 初始化运行时并进入 main</a></li><li><a data-toc-link href="#第三阶段应用程序运行">第三阶段：应用程序运行</a></li><li class="toc-nested"><a data-toc-link href="#模式一裸机主循环与中断">模式一：裸机主循环与中断</a></li><li class="toc-nested"><a data-toc-link href="#模式二rtos-任务与调度器">模式二：RTOS 任务与调度器</a></li><li><a data-toc-link href="#两种应用结构的对比">两种应用结构的对比</a></li><li><a data-toc-link href="#阅读工程时可以从哪里入手">阅读工程时可以从哪里入手</a></li></ul></nav></aside><article class="article-main" data-pagefind-body><header class="article-header"><h1>MCU 启动流程</h1><div class="article-meta" data-pagefind-ignore><div class="text-muted-foreground flex items-center gap-x-2"><time class="text-sm" datetime="2026-11-24T16:00:00.000Z">2026年11月25日</time></div><span class="article-meta-dot" aria-hidden="true">·</span><span>11 分钟阅读</span></div></header><details class="toc-mobile" data-pagefind-ignore><summary>On this page</summary><nav aria-label="文章目录"><ul><li><a data-toc-link href="#从上电到应用程序">从上电到应用程序</a></li><li><a data-toc-link href="#第一阶段硬件复位与引导">第一阶段：硬件复位与引导</a></li><li class="toc-nested"><a data-toc-link href="#1-上电复位">1. 上电复位</a></li><li class="toc-nested"><a data-toc-link href="#2-读取向量表">2. 读取向量表</a></li><li class="toc-nested"><a data-toc-link href="#3-执行-reset_handler">3. 执行 Reset_Handler</a></li><li class="toc-nested"><a data-toc-link href="#4-bootloader-如何移交应用">4. Bootloader 如何移交应用</a></li><li><a data-toc-link href="#第二阶段准备-cc-执行环境">第二阶段：准备 C/C++ 执行环境</a></li><li class="toc-nested"><a data-toc-link href="#1-系统级初始化">1. 系统级初始化</a></li><li class="toc-nested"><a data-toc-link href="#2-复制-data-段">2. 复制 .data 段</a></li><li class="toc-nested"><a data-toc-link href="#3-清零-bss-段">3. 清零 .bss 段</a></li><li class="toc-nested"><a data-toc-link href="#4-初始化运行时并进入-main">4. 初始化运行时并进入 main</a></li><li><a data-toc-link href="#第三阶段应用程序运行">第三阶段：应用程序运行</a></li><li class="toc-nested"><a data-toc-link href="#模式一裸机主循环与中断">模式一：裸机主循环与中断</a></li><li class="toc-nested"><a data-toc-link href="#模式二rtos-任务与调度器">模式二：RTOS 任务与调度器</a></li><li><a data-toc-link href="#两种应用结构的对比">两种应用结构的对比</a></li><li><a data-toc-link href="#阅读工程时可以从哪里入手">阅读工程时可以从哪里入手</a></li></ul></nav></details><figure class="article-cover" data-pagefind-ignore><img src="/images/mcu-startup.svg" alt="MCU 启动流程" width="630" height="354" loading="eager"></figure><div id="article" class="app-prose article-content"><p>MCU 上电之后，并不会直接执行我们写的 <code>main()</code>。在应用程序运行之前，硬件、启动代码和运行时库需要先准备好执行环境。</p>
+<p>本文以常见的 ARM Cortex-M 微控制器为例，梳理从上电到主循环或任务调度的过程。不同芯片、工具链和启动方案的具体步骤可能不同，实际顺序应结合启动文件、链接脚本和芯片手册确认。</p>
+<h2 id="从上电到应用程序">从上电到应用程序</h2>
+<pre class="astro-code astro-code-themes min-light night-owl" style="--shiki-light:#24292eff;--shiki-dark:#d6deeb;--shiki-light-bg:#ffffff;--shiki-dark-bg:#011627; overflow-x: auto;--file-name-offset: -0.75rem;" tabindex="0" data-language="text"><code><span class="line"><span>上电或复位</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>根据芯片启动配置选择启动存储器</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>读取初始栈指针与复位处理函数地址</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>进入 Reset_Handler（可能先运行 Boot ROM / Bootloader）</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>系统初始化与 C/C++ 运行时初始化</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>进入 main()</span></span>
+<span class="line"><span>    ↓</span></span>
+<span class="line"><span>裸机主循环 / RTOS 任务调度</span></span></code></pre>
+<p>Bootloader 并非每个应用都需要。如果芯片先进入厂商 Boot ROM，或者项目使用了固件升级引导程序，还会有选择启动介质、检查应用和移交控制权等步骤。</p>
+<h2 id="第一阶段硬件复位与引导">第一阶段：硬件复位与引导</h2>
+<h3 id="1-上电复位">1. 上电复位</h3>
+<p>电源达到芯片要求后，上电复位电路会按芯片规定释放复位。复位也可能由外部引脚、看门狗或软件触发。</p>
+<p>处理器和外设进入各自规定的复位状态，但不能简单理解为“所有寄存器和 RAM 都被清零”。RAM 的初始内容通常不能依赖，部分备份域或保留区域也可能跨复位保存数据。</p>
+<h3 id="2-读取向量表">2. 读取向量表</h3>
+<p>在常见 Cortex-M 启动模型中，处理器从启动时映射的向量表读取两个关键值：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>向量表偏移</th><th>内容</th><th>用途</th></tr></thead><tbody><tr><td><code>0x00</code></td><td>主栈指针 MSP 的初始值</td><td>建立初始栈位置，通常指向 RAM 中预留栈区域的顶部</td></tr><tr><td><code>0x04</code></td><td>复位处理函数的入口值</td><td>确定 <code>Reset_Handler</code> 的执行入口</td></tr></tbody></table>
+<p>当向量表映射在 <code>0x00000000</code> 时，这两项对应的地址就是 <code>0x00000000</code> 和 <code>0x00000004</code>。<strong><code>0x00000004</code> 是存放入口值的位置，不是 CPU 直接从那里执行应用代码。</strong> Cortex-M 入口值还包含 Thumb 状态信息，不能只把它当成普通数据地址理解。</p>
+<p>Flash、系统 ROM 或 SRAM 如何映射到启动区域，由具体芯片的启动引脚、选项字节或其他启动配置决定。</p>
+<h3 id="3-执行-reset_handler">3. 执行 Reset_Handler</h3>
+<p><code>Reset_Handler</code> 通常定义在芯片对应的启动文件中，例如 <code>startup_stm32f407xx.s</code>。进入这里后，处理器才开始执行启动代码中的指令。</p>
+<p>向量表还保存了异常和外设中断处理函数的入口。启动文件往往提供默认处理函数，应用程序可以按工具链约定提供自己的实现。</p>
+<h3 id="4-bootloader-如何移交应用">4. Bootloader 如何移交应用</h3>
+<p>如果应用前面有 Bootloader，它通常需要先找到并检查应用镜像，再按芯片和工程约定移交控制权。常见工作包括：</p>
+<ul>
+<li>处理已经启用的中断、外设和系统节拍，避免应用启动时继承意外状态。</li>
+<li>在处理器支持时，将向量表基址配置为应用的向量表位置。</li>
+<li>使用应用向量表中的初始栈指针与复位入口完成跳转。</li>
+</ul>
+<p>这一步需要结合具体平台实现。普通的函数调用不能自动完成中断状态、向量表和栈等全部交接工作。</p>
+<h2 id="第二阶段准备-cc-执行环境">第二阶段：准备 C/C++ 执行环境</h2>
+<p>启动代码的职责，是让编译后的 C/C++ 程序获得它所依赖的初始环境。这些工作可能由汇编启动文件、<code>SystemInit()</code> 和运行时库共同完成。</p>
+<h3 id="1-系统级初始化">1. 系统级初始化</h3>
+<p>根据芯片需求，初始化过程可能包含时钟、FPU、外部存储器或其他底层配置。CMSIS 工程通常提供 <code>SystemInit()</code> 作为系统初始化入口。</p>
+<p><strong>初始化顺序取决于启动实现。</strong> 有些工程先调用 <code>SystemInit()</code>，再准备 <code>.data</code> 和 <code>.bss</code>；另一些工程由运行时库组织这些步骤。如果此时全局变量尚未初始化，早期初始化代码就不能依赖它们的正常初值。</p>
+<p>看门狗也需要按芯片和产品要求处理，可能是喂狗、配置或保持运行，并不是所有启动程序都会关闭它。应用的完整时钟配置也不一定都在启动文件中完成。</p>
+<h3 id="2-复制-data-段">2. 复制 .data 段</h3>
+<p>带有非零初值的可写全局变量、静态变量，通常需要在 RAM 中保存运行时数据，而它们的初始内容保存在固件镜像中。</p>
+<pre class="astro-code astro-code-themes min-light night-owl" style="--shiki-light:#24292eff;--shiki-dark:#d6deeb;--shiki-light-bg:#ffffff;--shiki-dark-bg:#011627; overflow-x: auto;--file-name-offset: -0.75rem;" tabindex="0" data-language="c"><code><span class="line"><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">int</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> counter </span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">=</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C"> 10</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">static</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA"> int</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> mode </span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">=</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C"> 2</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span></code></pre>
+<p>启动过程会根据链接脚本给出的地址，将相应初值从 Flash 等加载区域复制到 RAM 的 <code>.data</code> 运行区域。这样程序开始后，变量既有正确初值，也可以被修改。</p>
+<h3 id="3-清零-bss-段">3. 清零 .bss 段</h3>
+<p>未显式初始化或初始化为零的静态存储期对象，通常放在 <code>.bss</code> 中。</p>
+<pre class="astro-code astro-code-themes min-light night-owl" style="--shiki-light:#24292eff;--shiki-dark:#d6deeb;--shiki-light-bg:#ffffff;--shiki-dark-bg:#011627; overflow-x: auto;--file-name-offset: -0.75rem;" tabindex="0" data-language="c"><code><span class="line"><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">int</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> counter;</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">static</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA"> int</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> ready </span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">=</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C"> 0</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span></code></pre>
+<p>运行时初始化会将相应区域置零。<code>.bss</code> 通常不需要在固件镜像中存放同样大小的一片零数据，只需记录其位置和大小。</p>
+<p>工程也可能定义 <code>.noinit</code> 等特殊区域，用于保留特定数据；这些区域应按链接脚本和启动代码的实际约定处理。</p>
+<h3 id="4-初始化运行时并进入-main">4. 初始化运行时并进入 main</h3>
+<p>C++ 工程还需要在适当阶段调用静态对象的构造函数。具体工具链可能通过 <code>__libc_init_array()</code>、<code>__main</code> 或其他运行时入口完成相关工作。</p>
+<p>这些准备完成后，程序才进入 <code>main()</code>。对于通常不会退出的 MCU 应用，还应明确 <code>main()</code> 意外返回时的处理方式。</p>
+<h2 id="第三阶段应用程序运行">第三阶段：应用程序运行</h2>
+<p>进入 <code>main()</code> 之后，常见的组织方式是裸机超级循环，或由 RTOS 调度多个任务。</p>
+<h3 id="模式一裸机主循环与中断">模式一：裸机主循环与中断</h3>
+<pre class="astro-code astro-code-themes min-light night-owl" style="--shiki-light:#24292eff;--shiki-dark:#d6deeb;--shiki-light-bg:#ffffff;--shiki-dark-bg:#011627; overflow-x: auto;--file-name-offset: -0.75rem;" tabindex="0" data-language="c"><code><span class="line"><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">int</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic"> main</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">(</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">) {</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">    hardware_init</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">()</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">    application_init</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">()</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">    while</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> (</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C">1</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">) {</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">        task_A</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">()</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic">  // 检查按键或状态</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">        task_B</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">()</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic">  // 更新显示</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">        task_C</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">()</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic">  // 处理接收缓冲区中的数据</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">    }</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">}</span></span></code></pre>
+<p>上面的函数名用于说明结构，具体初始化与任务由应用实现。主循环中的任务依次执行，因此每项工作都应尽量短小，避免长时间阻塞后续处理。</p>
+<p>中断用于响应外设事件：当中断使能、屏蔽状态和优先级条件允许时，处理器保存必要现场，进入中断服务程序，完成后恢复此前的执行。</p>
+<p>中断服务程序通常只完成及时处理、记录状态或搬运少量数据，再由主循环完成较长的工作。主循环和中断共享数据时，还需要考虑访问原子性和同步。</p>
+<p>在常见的“前后台系统”叫法中，中断服务程序属于前台，主循环属于后台。裸机系统也可以满足严格的实时要求，关键在于最坏执行时间、中断延迟和整体设计，不能只用“有没有 RTOS”判断实时性。</p>
+<h3 id="模式二rtos-任务与调度器">模式二：RTOS 任务与调度器</h3>
+<p>RTOS 将不同功能拆分为任务，由调度器按配置决定哪个就绪任务获得 CPU。下面用 FreeRTOS 风格代码说明结构，省略了完整的错误处理和硬件实现。</p>
+<pre class="astro-code astro-code-themes min-light night-owl" style="--shiki-light:#24292eff;--shiki-dark:#d6deeb;--shiki-light-bg:#ffffff;--shiki-dark-bg:#011627; overflow-x: auto;--file-name-offset: -0.75rem;" tabindex="0" data-language="c"><code><span class="line"><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">#</span><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">include</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD"> "</span><span style="--shiki-light:#22863A;--shiki-dark:#ECC48D">FreeRTOS.h</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD">"</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">#</span><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">include</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD"> "</span><span style="--shiki-light:#22863A;--shiki-dark:#ECC48D">task.h</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD">"</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic"> hardware_init</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">(</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">static</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA"> void</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic"> KeyTask</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">(</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#D32F2F;--shiki-dark:#7FDBCA"> *</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D7DBE0">arg</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">) {</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">    (</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">)arg;</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">    for</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> (;;) {</span></span>
+<span class="line"><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic">        // 检查按键，或改为等待队列 / 通知</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">        vTaskDelay</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">(</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">pdMS_TO_TICKS</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">(</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C">20</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">))</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">    }</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">static</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA"> void</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic"> DisplayTask</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">(</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#D32F2F;--shiki-dark:#7FDBCA"> *</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D7DBE0">arg</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">) {</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">    (</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">)arg;</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">    for</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> (;;) {</span></span>
+<span class="line"><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic">        // 更新显示</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">        vTaskDelay</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">(</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">pdMS_TO_TICKS</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">(</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C">100</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">))</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">    }</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">int</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic"> main</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">(</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">void</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">) {</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">    hardware_init</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">()</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic">    // 示例栈深度以 StackType_t 为单位，须按实际任务需求评估。</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">    if</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> (</span><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">xTaskCreate</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">(KeyTask</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD"> "</span><span style="--shiki-light:#22863A;--shiki-dark:#ECC48D">Key</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD">"</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C"> 256</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#82AAFF"> NULL</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C"> 2</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#82AAFF"> NULL</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">)</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA"> !=</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> pdPASS </span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA">||</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">        xTaskCreate</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">(DisplayTask</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD"> "</span><span style="--shiki-light:#22863A;--shiki-dark:#ECC48D">Display</span><span style="--shiki-light:#22863A;--shiki-dark:#D9F5DD">"</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C"> 256</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#82AAFF"> NULL</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#F78C6C"> 1</span><span style="--shiki-light:#212121;--shiki-dark:#82AAFF">,</span><span style="--shiki-light:#1976D2;--shiki-dark:#82AAFF"> NULL</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">)</span><span style="--shiki-light:#D32F2F;--shiki-dark:#C792EA"> !=</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> pdPASS) {</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">        for</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> (;;) {</span><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic"> /* 处理任务创建失败 */</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> }</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-light-font-style:inherit;--shiki-dark:#82AAFF;--shiki-dark-font-style:italic">    vTaskStartScheduler</span><span style="--shiki-light:#6F42C1;--shiki-dark:#82AAFF">()</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#C2C3C5;--shiki-light-font-style:inherit;--shiki-dark:#637777;--shiki-dark-font-style:italic">    // 正常启动后不会返回；返回时应处理启动失败。</span></span>
+<span class="line"><span style="--shiki-light:#D32F2F;--shiki-light-font-style:inherit;--shiki-dark:#C792EA;--shiki-dark-font-style:italic">    for</span><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB"> (;;) { }</span></span>
+<span class="line"><span style="--shiki-light:#24292EFF;--shiki-dark:#D6DEEB">}</span></span></code></pre>
+<p><code>vTaskDelay()</code> 的参数单位是系统节拍 tick，不能直接把数值当成毫秒。<code>pdMS_TO_TICKS()</code> 根据配置的节拍频率换算，实际时间精度仍受节拍分辨率影响。</p>
+<p>在启用抢占的典型单核配置下，更高优先级的任务就绪后，会在调度条件允许时抢占当前低优先级任务。临界区、中断屏蔽和调度器挂起等因素仍然影响响应时间。</p>
+<p>任务通过队列、信号量、互斥锁或通知等机制协作。RTOS 提供了组织多任务的工具，但系统是否满足截止时间，还需要结合优先级、执行时间和资源竞争进行分析。</p>
+<h2 id="两种应用结构的对比">两种应用结构的对比</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>特性</th><th>裸机超级循环</th><th>典型抢占式 RTOS</th></tr></thead><tbody><tr><td>核心结构</td><td>主循环与中断</td><td>任务、调度器与中断</td></tr><tr><td>调度方式</td><td>主循环按应用逻辑执行，中断可打断</td><td>就绪任务按优先级等规则获得 CPU</td></tr><tr><td>实时性</td><td>取决于循环周期、中断和工作负载</td><td>取决于优先级、调度延迟和资源竞争</td></tr><tr><td>代码组织</td><td>适合小型系统，也可通过状态机模块化</td><td>方便拆分相对独立的并发工作</td></tr><tr><td>资源开销</td><td>通常较小</td><td>需要内核、任务栈等额外资源</td></tr><tr><td>选择依据</td><td>功能复杂度、响应要求与维护成本</td><td>并发需求、资源预算与时序要求</td></tr></tbody></table>
+<h2 id="阅读工程时可以从哪里入手">阅读工程时可以从哪里入手</h2>
+<p>要把这条启动链路对应到实际工程，可以依次查看：</p>
+<ol>
+<li><strong>芯片启动配置</strong>：确认复位后选择哪一块存储器。</li>
+<li><strong>向量表与启动文件</strong>：找到初始栈指针和 <code>Reset_Handler</code>。</li>
+<li><strong>链接脚本</strong>：确认 Flash、RAM、栈、<code>.data</code> 与 <code>.bss</code> 的位置。</li>
+<li><strong><code>SystemInit()</code> 与运行时入口</strong>：确认时钟、内存和构造函数的初始化顺序。</li>
+<li><strong><code>main()</code> 与调度器入口</strong>：确认应用如何初始化、如何进入持续运行状态。</li>
+</ol>
+<p>参考实现：<a href="https://github.com/ARM-software/CMSIS_5/blob/develop/Device/ARM/ARMCM4/Source/GCC/startup_ARMCM4.S">CMSIS Cortex-M4 启动文件</a>、<a href="https://github.com/FreeRTOS/FreeRTOS-Kernel/blob/main/include/task.h">FreeRTOS 任务 API 声明与说明</a>。</p></div><footer class="article-end" data-pagefind-ignore><div class="article-share"><span>Share</span><div class="article-share-links"><a href="https://wa.me/?text=https%3A%2F%2Fshenyebuwu.github.io%2Fposts%2Fmcu-startup%2F" target="_blank" rel="noopener noreferrer">WhatsApp</a><a href="https://www.facebook.com/sharer.php?u=https%3A%2F%2Fshenyebuwu.github.io%2Fposts%2Fmcu-startup%2F" target="_blank" rel="noopener noreferrer">Facebook</a><a href="https://x.com/intent/post?url=https%3A%2F%2Fshenyebuwu.github.io%2Fposts%2Fmcu-startup%2F" target="_blank" rel="noopener noreferrer">X</a><a href="https://t.me/share/url?url=https%3A%2F%2Fshenyebuwu.github.io%2Fposts%2Fmcu-startup%2F" target="_blank" rel="noopener noreferrer">Telegram</a><a href="https://pinterest.com/pin/create/button/?url=https%3A%2F%2Fshenyebuwu.github.io%2Fposts%2Fmcu-startup%2F" target="_blank" rel="noopener noreferrer">Pinterest</a><a href="mailto:?subject=See%20this%20post&amp;body=https%3A%2F%2Fshenyebuwu.github.io%2Fposts%2Fmcu-startup%2F">邮件</a></div></div><nav class="article-pager" aria-label="文章翻页"><a href="/archives/">← Back to Blog</a></nav></footer></article></main><script type="module">var e=()=>{};function t(){e();let t=Array.from(document.querySelectorAll(`[data-toc-link]`)),n=Array.from(document.querySelectorAll(`#article h2[id], #article h3[id]`));if(!t.length||!n.length)return;let r=!1,i=()=>{r=!1;let e=n[0].id;for(let t of n)t.getBoundingClientRect().top<=160&&(e=t.id);for(let n of t)decodeURIComponent(n.hash.slice(1))===e?n.setAttribute(`aria-current`,`location`):n.removeAttribute(`aria-current`)},a=()=>{r||(r=!0,requestAnimationFrame(i))};i(),window.addEventListener(`scroll`,a,{passive:!0}),e=()=>window.removeEventListener(`scroll`,a)}document.addEventListener(`astro:page-load`,t),document.addEventListener(`astro:before-swap`,()=>e());</script><footer class="site-footer mt-auto"><div class="footer-inner"><p>© 2026 shenyebuwu</p><nav aria-label="页脚导航"><a href="/about/">About</a><a href="https://shenyebuwu.github.io/rss.xml">RSS</a><a href="https://github.com/shenyebuwu" target="_blank" rel="noopener noreferrer">GitHub</a></nav></div></footer><script type="module">var e=`theme`,t=`light`,n=`dark`;function r(){return localStorage.getItem(e)===n?n:t}var i=window.__theme?.value??r();function a(){localStorage.setItem(e,i),o()}function o(){let e=document.firstElementChild;e?.setAttribute(`data-theme`,i),e?.classList.toggle(`dark`,i===n),document.querySelector(`#theme-btn`)?.setAttribute(`aria-label`,i===n?`切换浅色模式`:`切换深色模式`);let t=window.getComputedStyle(document.body).backgroundColor;document.querySelector(`meta[name='theme-color']`)?.setAttribute(`content`,t)}function s(){o(),document.querySelector(`#theme-btn`)?.addEventListener(`click`,()=>{i=i===t?n:t,a()})}s(),document.addEventListener(`astro:after-swap`,s),document.addEventListener(`astro:before-swap`,e=>{let t=document.querySelector(`meta[name='theme-color']`)?.getAttribute(`content`);t&&e.newDocument.querySelector(`meta[name='theme-color']`)?.setAttribute(`content`,t)});</script></body></html>
